@@ -1,0 +1,4 @@
+selenium
+webdriver-manager
+pandas
+pandas_ta
