@@ -1,0 +1,102 @@
+import os
+import time
+import pandas as pd
+import pandas_ta as ta
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from datetime import datetime
+
+# --- CONFIGURATION DES INDICATEURS ---
+SYMBOLE = "EUR/USD OTC"
+MISE_FIXE = "5"        # Somme à chaque trade
+DUREE_TRADE = "1"      # Expiration 1 minute
+EMA_FOND = 200         # Tendance globale
+EMA_RAPIDE = 50        # Tendance immédiate
+RSI_PERIODE = 14
+
+class PocketOptionProBot:
+    def __init__(self):
+        print(f"Initialisation du bot - Heure Abidjan : {datetime.now().strftime('%H:%M:%S')}")
+        chrome_options = Options()
+        # Configuration pour tourner sur un serveur (GitHub Actions)
+        chrome_options.add_argument("--headless") 
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        self.historique_prix = []
+
+    def connexion(self):
+        # Utilisation des variables d'environnement pour la sécurité
+        email = os.getenv('POCKET_EMAIL')
+        password = os.getenv('POCKET_PASS')
+        
+        self.driver.get("https://pocketoption.com/login")
+        time.sleep(5)
+        
+        try:
+            self.driver.find_element(By.NAME, "email").send_keys(email)
+            self.driver.find_element(By.NAME, "password").send_keys(password)
+            self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+            print("Connexion réussie au compte Pocket Option.")
+            time.sleep(10) # Temps de chargement du graphique
+        except Exception as e:
+            print(f"Erreur de connexion : {e}")
+
+    def analyser_tendance(self):
+        try:
+            # Récupération du prix actuel sur le graphique
+            prix_element = self.driver.find_element(By.CLASS_NAME, "current-price")
+            prix_actuel = float(prix_element.text.replace(',', '.'))
+            self.historique_prix.append(prix_actuel)
+
+            if len(self.historique_prix) > EMA_FOND:
+                df = pd.DataFrame(self.historique_prix, columns=['close'])
+                
+                # Calcul des indicateurs techniques
+                df['ema_200'] = ta.ema(df['close'], length=EMA_FOND)
+                df['ema_50'] = ta.ema(df['close'], length=EMA_RAPIDE)
+                df['rsi'] = ta.rsi(df['close'], length=RSI_PERIODE)
+
+                last = df.iloc[-1]
+                
+                # --- LOGIQUE DE TRADING SUPER PUISSANTE ---
+                # CONDITION ACHAT (CALL)
+                if last['close'] > last['ema_200'] and last['ema_50'] > last['ema_200']:
+                    if last['rsi'] < 30: # Le prix baisse temporairement dans une hausse
+                        self.cliquer_bouton("UP")
+
+                # CONDITION VENTE (PUT)
+                elif last['close'] < last['ema_200'] and last['ema_50'] < last['ema_200']:
+                    if last['rsi'] > 70: # Le prix monte temporairement dans une baisse
+                        self.cliquer_bouton("DOWN")
+
+        except Exception as e:
+            pass # On continue si le prix n'est pas encore chargé
+
+    def cliquer_bouton(self, direction):
+        try:
+            if direction == "UP":
+                bouton = self.driver.find_element(By.CLASS_NAME, "btn-call")
+            else:
+                bouton = self.driver.find_element(By.CLASS_NAME, "btn-put")
+            
+            bouton.click()
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Signal {direction} exécuté avec succès.")
+            time.sleep(62) # Attente de la fin du trade (1 min + sécurité)
+        except Exception as e:
+            print(f"Erreur d'exécution : {e}")
+
+    def demarrer(self):
+        self.connexion()
+        print(f"Analyse en cours sur {SYMBOLE}...")
+        while True:
+            self.analyser_tendance()
+            time.sleep(1) # Vérification chaque seconde
+
+if __name__ == "__main__":
+    bot = PocketOptionProBot()
+    bot.demarrer()
