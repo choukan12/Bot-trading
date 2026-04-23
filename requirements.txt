@@ -1,4 +1,2 @@
-pandas
 pandas-ta
 selenium
-webdriver-manager
