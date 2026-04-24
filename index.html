@@ -1,62 +1,17 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGNAL BOT PRO - OTC</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>⚡ SIGNAL BOT PRO</h1>
-            <p class="subtitle">BINARY OPTIONS INDICATOR ANALYZER</p>
-        </header>
-
-        <div class="warning-box">
-            ⚠️ OUTIL ÉDUCATIF – Le trading comporte des risques de perte en capital
-        </div>
-
-        <div class="controls">
-            <div class="control-group">
-                <label>PAIRE</label>
-                <select id="market-select">
-                    <option value="EURUSD_OTC">EUR/USD OTC</option>
-                    <option value="GBPUSD_OTC">GBP/USD OTC</option>
-                    <option value="USDJPY_OTC">USD/JPY OTC</option>
-                    <option value="CRYPTO_IDX">CRYPTO IDX</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>EXPIRATION</label>
-                <select id="time-select">
-                    <option value="1">1 min</option>
-                    <option value="5">5 min</option>
-                </select>
-            </div>
-        </div>
-
-        <button id="analyze-btn">▶ ANALYSER</button>
-
-        <div id="result-area" class="hidden">
-            <div class="signal-card">
-                <h2 id="signal-type">ANALYSE EN COURS...</h2>
-                <div class="confidence-bar"><div id="confidence-level"></div></div>
-                <p>Confiance: <span id="confidence-value">0%</span></p>
-                <p>Prix d'entrée: <span id="entry-price">0.0000</span></p>
-            </div>
-        </div>
-
-        <div class="risk-management">
-            <h3>💰 GESTION DU RISQUE – RÈGLES ESSENTIELLES</h3>
-            <ul>
-                <li>Max par trade: <span>1-2% du capital</span></li>
-                <li>Signal min requis: <span>≥ 85% confiance</span></li>
-                <li>Max trades/jour: <span>5-8 trades</span></li>
-                <li>Indicateurs alignés: <span>3/5 minimum</span></li>
-            </ul>
-        </div>
-    </div>
-    <script src="engine.js"></script>
-</body>
-</html>
+<select id="market-select">
+    <optgroup label="Devises OTC">
+        <option value="EURUSD_OTC">EUR/USD OTC (92%)</option>
+        <option value="GBPUSD_OTC">GBP/USD OTC (92%)</option>
+        <option value="USDJPY_OTC">USD/JPY OTC (91%)</option>
+        <option value="AUDUSD_OTC">AUD/USD OTC (90%)</option>
+    </optgroup>
+    <optgroup label="Actions OTC">
+        <option value="APPLE_OTC">APPLE OTC (92%)</option>
+        <option value="AMAZON_OTC">AMAZON OTC (92%)</option>
+        <option value="MICROSOFT_OTC">MICROSOFT OTC (91%)</option>
+    </optgroup>
+    <optgroup label="Indices & Crypto">
+        <option value="CRYPTO_IDX">CRYPTO IDX (95%)</option>
+        <option value="BITCOIN_OTC">BITCOIN OTC (89%)</option>
+    </optgroup>
+</select>
