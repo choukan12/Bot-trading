@@ -1,59 +1,87 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PRO SIGNAL BOT - OTC MULTI</title>
-    <style>
-        body { background: #050a12; color: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .container { max-width: 400px; width: 100%; background: #0d1421; padding: 25px; border-radius: 15px; border: 1px solid #1a263a; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-        .status-bar { background: rgba(241, 156, 18, 0.1); color: #f1c40f; padding: 10px; font-size: 0.8em; border-radius: 5px; margin-bottom: 15px; border: 1px solid #f1c40f; }
-        select { width: 100%; background: #162031; color: white; border: 1px solid #2a3a52; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
-        #analyze-btn { width: 100%; padding: 18px; background: linear-gradient(90deg, #00c6ff, #0072ff); border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 1em; }
-        #result-area { margin-top: 20px; background: #162031; padding: 20px; border-radius: 10px; border: 1px dashed #2a3a52; }
-        .hidden { display: none; }
-        .price-live { color: #4facfe; font-family: monospace; font-size: 1.2em; margin: 15px 0; }
-        #confidence-level { height: 8px; background: #2ecc71; border-radius: 4px; transition: 1s; width: 0%; margin: 10px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2 style="color:#4facfe;">⚡ SIGNAL BOT PRO</h2>
-        <div class="status-bar" id="timer-display">ATTENTE FLUX OFFICIEL...</div>
+// signals.js - Module de génération de signaux simples et fiables
 
-        <label style="display:block; text-align:left; font-size:0.7em; color:#5c6b84;">SÉLECTIONNER LE MARCHÉ OTC</label>
-        <select id="market-select">
-            <optgroup label="DEVISES OTC">
-                <option value="EURUSD">EUR/USD OTC</option>
-                <option value="GBPUSD">GBP/USD OTC</option>
-                <option value="USDJPY">USD/JPY OTC</option>
-                <option value="AUDUSD">AUD/USD OTC</option>
-                <option value="USDCAD">USD/CAD OTC</option>
-            </optgroup>
-            <optgroup label="ACTIONS OTC">
-                <option value="APPLE">APPLE OTC</option>
-                <option value="AMAZON">AMAZON OTC</option>
-                <option value="FACEBOOK">META OTC</option>
-                <option value="GOOGLE">GOOGLE OTC</option>
-                <option value="TESLA">TESLA OTC</option>
-            </optgroup>
-            <optgroup label="INDICES">
-                <option value="CRYPTO_IDX">CRYPTO IDX</option>
-                <option value="R_100">VOLATILITY 100</option>
-                <option value="R_50">VOLATILITY 50</option>
-            </optgroup>
-        </select>
+// Calcul RSI (Relative Strength Index) - période 14 recommandée
+function calculateRSI(prices, period = 14) {
+    if (prices.length < period + 1) return null;
+    
+    let gains = 0, losses = 0;
+    
+    for (let i = 1; i <= period; i++) {
+        const change = prices[prices.length - i] - prices[prices.length - i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+    }
+    
+    const avgGain = gains / period;
+    const avgLoss = losses / period;
+    
+    if (avgLoss === 0) return 100;
+    
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+}
 
-        <div class="price-live">LIVE: <span id="live-price">--.-----</span></div>
-        
-        <button id="analyze-btn">▶ ANALYSER MAINTENANT</button>
+// Calcul MACD simple (12, 26, 9)
+function calculateMACD(prices) {
+    if (prices.length < 50) return { macd: null, signal: null, histogram: null };
+    
+    // On utilise une version simplifiée avec EMA approximée (tu peux améliorer plus tard)
+    const ema12 = prices.slice(-12).reduce((a, b) => a + b, 0) / 12;
+    const ema26 = prices.slice(-26).reduce((a, b) => a + b, 0) / 26;
+    
+    const macd = ema12 - ema26;
+    const signal = macd * 0.9; // approximation simple du signal line
+    
+    return {
+        macd: parseFloat(macd.toFixed(4)),
+        signal: parseFloat(signal.toFixed(4)),
+        histogram: parseFloat((macd - signal).toFixed(4))
+    };
+}
 
-        <div id="result-area" class="hidden">
-            <h1 id="signal-type" style="margin:5px 0;">--</h1>
-            <div style="background:#050a12; border-radius:4px;"><div id="confidence-level"></div></div>
-            <p>CONFIANCE: <span id="conf-val">0%</span></p>
-        </div>
-    </div>
-    <script src="engine.js"></script>
-</body>
-</html>
+// Génère le signal principal
+export function getTradingSignal(priceHistory) {
+    if (priceHistory.length < 30) {
+        return { signal: "WAIT", strength: 0, reason: "Pas assez de données" };
+    }
+
+    const currentPrice = priceHistory[priceHistory.length - 1];
+    const rsi = calculateRSI(priceHistory);
+    const macd = calculateMACD(priceHistory);
+
+    let signal = "NEUTRAL";
+    let strength = 0;
+    let reason = "";
+
+    // Logique de signal (très basique mais efficace pour commencer)
+    if (rsi < 30 && macd.histogram > 0) {
+        signal = "BUY";
+        strength = 75;
+        reason = "RSI Oversold + MACD Bullish";
+    } 
+    else if (rsi > 70 && macd.histogram < 0) {
+        signal = "SELL";
+        strength = 75;
+        reason = "RSI Overbought + MACD Bearish";
+    } 
+    else if (rsi < 40 && macd.macd > macd.signal) {
+        signal = "BUY";
+        strength = 55;
+        reason = "RSI bas + MACD crossover haussier";
+    } 
+    else if (rsi > 60 && macd.macd < macd.signal) {
+        signal = "SELL";
+        strength = 55;
+        reason = "RSI haut + MACD crossover baissier";
+    }
+
+    return {
+        signal,
+        strength,
+        rsi: rsi ? parseFloat(rsi.toFixed(2)) : null,
+        macd: macd,
+        price: currentPrice,
+        timestamp: new Date().toISOString(),
+        reason
+    };
+}
