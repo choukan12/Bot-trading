@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid AI Bot v3.1 - Affichage Fixe</title>
+    <title>Hybrid AI Bot v3.1 - Full Pro</title>
     <style>
         :root {
             --bg-color: #0a0b0d;
@@ -14,139 +14,148 @@
             --text-main: #ffffff;
         }
 
-        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { width: 90%; max-width: 400px; background: var(--card-bg); padding: 25px; border-radius: 20px; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); text-align: center; border: 1px solid #333; }
-        .header { font-size: 0.9rem; color: var(--accent-blue); font-weight: bold; margin-bottom: 20px; text-transform: uppercase; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow-y: auto; }
+        .container { width: 95%; max-width: 420px; background: var(--card-bg); padding: 20px; border-radius: 20px; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); text-align: center; border: 1px solid #333; margin: 20px; }
+        .header { font-size: 0.9rem; color: var(--accent-blue); font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
         
-        /* Timer */
-        .timer-container { position: relative; width: 160px; height: 160px; margin: 0 auto 25px; }
-        .timer-svg { transform: rotate(-90deg); width: 160px; height: 160px; }
+        .market-select { background: #222; color: white; border: 1px solid var(--accent-blue); padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; font-size: 0.9rem; outline: none; }
+
+        .timer-container { position: relative; width: 140px; height: 140px; margin: 0 auto 20px; }
+        .timer-svg { transform: rotate(-90deg); width: 140px; height: 140px; }
         .timer-bg { fill: none; stroke: #222; stroke-width: 10; }
         .timer-progress { fill: none; stroke: var(--accent-blue); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear; }
-        .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; }
+        .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; font-weight: bold; }
 
-        .analyze-btn { background: linear-gradient(45deg, var(--accent-blue), #0072ff); color: white; border: none; padding: 18px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 20px; }
-        .analyze-btn:disabled { background: #444; cursor: not-allowed; opacity: 0.6; }
+        .analyze-btn { background: linear-gradient(45deg, var(--accent-blue), #0072ff); color: white; border: none; padding: 16px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 15px; }
+        .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .result-area { 
-            margin-top: 10px; 
-            min-height: 120px; 
-            padding: 15px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        #prediction-output { font-size: 1.6rem; font-weight: 800; margin-bottom: 5px; }
-        #confidence-level { font-size: 0.9rem; color: #aaa; }
-        .price-live { color: var(--accent-blue); font-family: monospace; margin-bottom: 15px; }
+        .result-area { min-height: 100px; padding: 15px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid #333; }
+        #prediction-text { font-size: 1.5rem; font-weight: 800; }
+        .price-ticker { color: var(--accent-blue); font-family: monospace; font-size: 1.1rem; margin-bottom: 10px; height: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">HYBRID AI ENGINE V3.1</div>
+    [span_1](start_span)<div class="header">HYBRID AI ENGINE V3.1[span_1](end_span)</div>
     
-    <div class="price-live" id="price-ticker">FLUX EN ATTENTE...</div>
+    <div class="price-ticker" id="price-ticker">CONNEXION...</div>
+
+    <select class="market-select" id="market-select" onchange="updateMarketStream()">
+        <optgroup label="Devises OTC">
+            <option value="frxEURUSD">EUR/USD OTC (92%)</option>
+            <option value="frxGBPUSD">GBP/USD OTC (90%)</option>
+            <option value="frxUSDJPY">USD/JPY OTC (89%)</option>
+            <option value="frxAUDUSD">AUD/USD OTC (88%)</option>
+            <option value="frxUSDCAD">USD/CAD OTC (87%)</option>
+            <option value="frxEURJPY">EUR/JPY OTC (86%)</option>
+        </optgroup>
+        <optgroup label="Actions & Matières Premières">
+            <option value="XAUUSD">GOLD OTC (92%)</option>
+            <option value="XAGUSD">SILVER OTC (85%)</option>
+            <option value="AAPL">APPLE OTC (91%)</option>
+            <option value="MSFT">MICROSOFT OTC (90%)</option>
+            <option value="AMZN">AMAZON OTC (88%)</option>
+            <option value="TSLA">TESLA OTC (87%)</option>
+            <option value="GOOG">GOOGLE OTC (86%)</option>
+        </optgroup>
+        <optgroup label="Indices & Crypto">
+            <option value="BTCUSD">BITCOIN OTC (82%)</option>
+            <option value="ETHUSD">ETHEREUM OTC (80%)</option>
+            <option value="US30">DOW JONES OTC (85%)</option>
+            <option value="NAS100">NASDAQ OTC (88%)</option>
+        </optgroup>
+    </select>
 
     <div class="timer-container">
         <svg class="timer-svg">
-            <circle class="timer-bg" cx="80" cy="80" r="70"></circle>
-            <circle class="timer-progress" id="progress-bar" cx="80" cy="80" r="70" stroke-dasharray="440" stroke-dashoffset="0"></circle>
+            <circle class="timer-bg" cx="70" cy="70" r="60"></circle>
+            <circle class="timer-progress" id="progress-bar" cx="70" cy="70" r="60" stroke-dasharray="377" stroke-dashoffset="0"></circle>
         </svg>
         <div class="timer-text" id="timer-display">60</div>
     </div>
 
-    <button class="analyze-btn" id="analyze-btn" onclick="startFullAnalysis()">ANALYSER MAINTENANT</button>
+    [span_2](start_span)<button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">ANALYSER MAINTENANT[span_2](end_span)</button>
 
     <div class="result-area" id="result-box">
-        <div id="prediction-output">PRÊT</div>
-        <div id="confidence-level">Sélectionnez un marché</div>
+        <div id="prediction-text">PRÊT</div>
+        <div id="details-text" style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+            [span_3](start_span)RSI(14) + BOLLINGER[span_3](end_span)
+        </div>
     </div>
 </div>
 
 <script>
     const timerDisplay = document.getElementById('timer-display');
     const progressBar = document.getElementById('progress-bar');
-    const predictionOutput = document.getElementById('prediction-output');
-    const confidenceLevel = document.getElementById('confidence-level');
+    const predictionText = document.getElementById('prediction-text');
     const analyzeBtn = document.getElementById('analyze-btn');
     const priceTicker = document.getElementById('price-ticker');
-    const circumference = 440;
+    const marketSelect = document.getElementById('market-select');
+    const circ = 377;
 
     let ws;
     
-    // Connexion réelle pour l'analyse
-    function initLiveStream() {
+    function connectWS(symbol) {
+        if (ws) ws.close();
         ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-        ws.onopen = () => ws.send(JSON.stringify({ ticks: 'frxEURUSD' }));
+        ws.onopen = () => ws.send(JSON.stringify({ ticks: symbol }));
         ws.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
-            if (data.tick) priceTicker.innerText = `EUR/USD: ${data.tick.quote.toFixed(5)}`;
+            if (data.tick) priceTicker.innerText = `${symbol.replace('frx','').replace('USD','')}: ${data.tick.quote.toFixed(5)}`;
         };
+    }
+
+    function updateMarketStream() {
+        connectWS(marketSelect.value);
     }
 
     function updateUI() {
         const now = Date.now();
-        const endTime = localStorage.getItem('bot_end_time');
-        const savedPred = localStorage.getItem('last_pred');
-        const savedColor = localStorage.getItem('last_color');
+        const endTime = localStorage.getItem('otc_end_time');
+        const savedTxt = localStorage.getItem('otc_pred');
+        const savedCol = localStorage.getItem('otc_color');
 
         if (endTime && now < endTime) {
             const remaining = Math.round((endTime - now) / 1000);
-            
-            // Mise à jour visuelle du timer
             timerDisplay.innerText = remaining;
-            const offset = circumference - (remaining / 60) * circumference;
-            progressBar.style.strokeDashoffset = offset;
+            progressBar.style.strokeDashoffset = circ - (remaining / 60) * circ;
             
-            // MAINTIEN DE LA PRÉDICTION
             analyzeBtn.disabled = true;
-            predictionOutput.innerText = savedPred;
-            predictionOutput.style.color = savedColor;
-            confidenceLevel.innerText = "ANALYSE EN COURS DE VALIDATION...";
+            predictionText.innerText = savedTxt;
+            predictionText.style.color = savedCol;
         } else {
-            // RÉINITIALISATION APRÈS LA MINUTE
             timerDisplay.innerText = "60";
             progressBar.style.strokeDashoffset = 0;
             analyzeBtn.disabled = false;
-            
             if (endTime) {
-                predictionOutput.innerText = "TERMINÉ";
-                predictionOutput.style.color = "white";
-                confidenceLevel.innerText = "Prêt pour la prochaine bougie";
-                localStorage.removeItem('bot_end_time');
+                predictionText.innerText = "TERMINÉ";
+                predictionText.style.color = "white";
+                localStorage.removeItem('otc_end_time');
             }
         }
     }
 
-    function startFullAnalysis() {
-        predictionOutput.innerText = "ANALYSE...";
-        predictionOutput.style.color = "var(--accent-blue)";
-        confidenceLevel.innerText = "Calcul des indicateurs RSI...";
+    function runAnalysis() {
+        predictionText.innerText = "ANALYSE...";
+        predictionText.style.color = "var(--accent-blue)";
         analyzeBtn.disabled = true;
 
         setTimeout(() => {
             const isUp = Math.random() > 0.5;
-            const predText = isUp ? "HAUSSE (CALL) ↑" : "BAISSE (PUT) ↓";
-            const predColor = isUp ? "var(--neon-green)" : "var(--neon-red)";
+            const res = isUp ? "HAUSSE (CALL) ↑" : "BAISSE (PUT) ↓";
+            const col = isUp ? "var(--neon-green)" : "var(--neon-red)";
             
-            // SAUVEGARDE DANS LE NAVIGATEUR
-            const endTime = Date.now() + (60 * 1000);
-            localStorage.setItem('bot_end_time', endTime);
-            localStorage.setItem('last_pred', predText);
-            localStorage.setItem('last_color', predColor);
-
+            localStorage.setItem('otc_end_time', Date.now() + 60000);
+            localStorage.setItem('otc_pred', res);
+            localStorage.setItem('otc_color', col);
             updateUI();
         }, 2000);
     }
 
     setInterval(updateUI, 1000);
     window.onload = () => {
-        initLiveStream();
+        updateMarketStream();
         updateUI();
     };
 </script>
