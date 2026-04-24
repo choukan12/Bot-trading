@@ -1,79 +1,204 @@
-<script type="module">
-    import { startBot } from './engine.js';
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Trading OTC - Signaux 1 min</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f0f17;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #4ade80, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 20px auto;
+            display: block;
+        }
+        .btn-start { background: #22c55e; color: white; }
+        .btn-stop { background: #ef4444; color: white; display: none; }
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 20px 0;
+            padding: 10px;
+            background: #1a1a2e;
+            border-radius: 10px;
+        }
+        .signals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .signal-card {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 18px;
+            border: 2px solid #334155;
+        }
+        .signal-card.buy { border-color: #22c55e; }
+        .signal-card.sell { border-color: #ef4444; }
+        .symbol { font-size: 1.5rem; font-weight: bold; color: #a5b4fc; }
+        .signal { font-size: 2.5rem; font-weight: 800; margin: 10px 0; }
+        .signal.buy { color: #22c55e; }
+        .signal.sell { color: #ef4444; }
+        .price { font-size: 1.6rem; color: #c4d0ff; }
+        .strength { font-weight: bold; margin: 8px 0; }
+        .log {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+        .log-entry { padding: 5px 0; border-bottom: 1px solid #334155; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Bot Trading OTC</h1>
+        <p style="text-align:center; color:#a1a1aa;">Signaux en temps réel sur OKX • Timeframe 1 minute</p>
 
-    let isRunning = false;
+        <button id="startBtn" class="btn btn-start">▶️ Démarrer les Signaux</button>
+        <button id="stopBtn" class="btn btn-stop">⏹️ Arrêter le Bot</button>
 
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const statusText = document.getElementById('statusText');
-    const signalsContainer = document.getElementById('signalsContainer');
-    const logContainer = document.getElementById('logContainer');
+        <div id="status" class="status">Statut : Prêt</div>
 
-    // Fonction pour afficher un signal sur l'interface (déjà présente)
-    window.updateUI = function(symbol, signal) {
-        let card = document.getElementById(`signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`);
-        
-        if (!card) {
-            card = document.createElement('div');
-            card.className = `signal-card ${signal.signal.toLowerCase()}`;
-            card.id = `signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`;
-            signalsContainer.appendChild(card);
+        <div id="signalsGrid" class="signals-grid"></div>
+
+        <div class="log">
+            <h3 style="margin-bottom:10px;">Journal des Signaux</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // === CONFIG ===
+        const symbols = ["BTC-USDT", "ETH-USDT", "SOL-USDT", "USDT-TRY", "BTC-TRY"];
+        let priceHistory = {};
+        let isRunning = false;
+        let wsOKX = null;
+        let wsBinance = null;
+
+        // Calcul RSI simple
+        function calculateRSI(prices) {
+            if (prices.length < 15) return null;
+            let gains = 0, losses = 0;
+            for (let i = 1; i < 15; i++) {
+                const change = prices[prices.length - i] - prices[prices.length - i - 1];
+                if (change > 0) gains += change;
+                else losses -= change;
+            }
+            const avgGain = gains / 14;
+            const avgLoss = losses / 14 || 0.0001;
+            return 100 - (100 / (1 + avgGain / avgLoss));
         }
 
-        const strengthColor = signal.strength > 70 ? 'strong' : signal.strength > 50 ? 'medium' : 'weak';
+        function getSignal(history) {
+            if (history.length < 20) return { signal: "WAIT", strength: 0, reason: "Chargement..." };
+            const rsi = calculateRSI(history);
+            const currentPrice = history[history.length - 1];
 
-        card.innerHTML = `
-            <div class="symbol">${symbol}</div>
-            <div class="signal ${signal.signal.toLowerCase()}">
-                ${signal.signal}
-            </div>
-            <div class="price">$${parseFloat(signal.price).toFixed(4)}</div>
-            <div class="strength ${strengthColor}">
-                Force : ${signal.strength}%
-            </div>
-            <div class="rsi">RSI: ${signal.rsi || 'N/A'}</div>
-            <div class="reason">${signal.reason}</div>
-            <div class="time">${new Date(signal.timestamp).toLocaleTimeString()}</div>
-        `;
-
-        // Ajouter au journal
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `
-            <span class="time">[${new Date().toLocaleTimeString()}]</span>
-            <span class="symbol">${symbol}</span> → 
-            <span class="signal ${signal.signal.toLowerCase()}">${signal.signal}</span> 
-            (Force: ${signal.strength}%) - ${signal.reason}
-        `;
-        logContainer.appendChild(logEntry);
-        
-        // Garder seulement les 50 derniers logs
-        if (logContainer.children.length > 50) {
-            logContainer.removeChild(logContainer.children[0]);
+            if (rsi < 35) return { signal: "BUY", strength: 75, reason: "RSI Oversold", price: currentPrice };
+            if (rsi > 65) return { signal: "SELL", strength: 75, reason: "RSI Overbought", price: currentPrice };
+            return { signal: "NEUTRAL", strength: 40, reason: "Marché neutre", price: currentPrice };
         }
 
-        // Scroll automatique vers le bas du journal
-        logContainer.scrollTop = logContainer.scrollHeight;
-    };
+        function updateUI(symbol, signal) {
+            let card = document.getElementById('card-' + symbol.replace('-', ''));
+            if (!card) {
+                card = document.createElement('div');
+                card.className = `signal-card ${signal.signal.toLowerCase()}`;
+                card.id = 'card-' + symbol.replace('-', '');
+                document.getElementById('signalsGrid').appendChild(card);
+            }
+            card.innerHTML = `
+                <div class="symbol">${symbol}</div>
+                <div class="signal ${signal.signal.toLowerCase()}">${signal.signal}</div>
+                <div class="price">$${signal.price.toFixed(2)}</div>
+                <div class="strength">Force: ${signal.strength}%</div>
+                <div>${signal.reason}</div>
+            `;
 
-    // Démarrer le bot avec mise à jour du statut pour 1 minute
-    startBtn.addEventListener('click', () => {
-        if (!isRunning) {
-            startBot();
+            // Journal
+            const log = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${symbol} → <strong>${signal.signal}</strong> (${signal.strength}%) - ${signal.reason}`;
+            log.appendChild(entry);
+            if (log.children.length > 30) log.removeChild(log.children[0]);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Connexion OKX WebSocket
+        function connectOKX() {
+            wsOKX = new WebSocket("wss://ws.okx.com:8443/ws/v5/public");
+            wsOKX.onopen = () => {
+                console.log("✅ OKX connecté");
+                const msg = { op: "subscribe", args: symbols.map(s => ({channel: "tickers", instId: s})) };
+                wsOKX.send(JSON.stringify(msg));
+            };
+            wsOKX.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.data && data.data[0]) {
+                        const t = data.data[0];
+                        const sym = t.instId;
+                        const price = parseFloat(t.last);
+                        if (!priceHistory[sym]) priceHistory[sym] = [];
+                        priceHistory[sym].push(price);
+                        if (priceHistory[sym].length > 100) priceHistory[sym].shift();
+
+                        if (priceHistory[sym].length % 5 === 0) {
+                            const signal = getSignal(priceHistory[sym]);
+                            updateUI(sym, signal);
+                        }
+                    }
+                } catch(err) {}
+            };
+        }
+
+        // Démarrage du bot
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (isRunning) return;
             isRunning = true;
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-block';
-            
-            // Mise à jour du statut pour mode 1 minute
-            statusText.textContent = 'Statut : Connexion aux marchés • Signaux 1 minute en cours...';
-            statusText.style.color = '#4ade80';
-        }
-    });
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            document.getElementById('status').innerHTML = 'Statut : <span style="color:#4ade80">Connexion aux marchés • Signaux 1 minute...</span>';
 
-    // Arrêter le bot
-    stopBtn.addEventListener('click', () => {
-        if (confirm('Arrêter le bot et recharger la page ?')) {
+            priceHistory = {};
+            connectOKX();
+            console.log("🚀 Bot Trading OTC démarré");
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (wsOKX) wsOKX.close();
+            isRunning = false;
             location.reload();
-        }
-    });
-</script>
+        });
+
+        // Message initial
+        console.log("Bot Trading OTC chargé - Clique sur Démarrer les Signaux");
+    </script>
+</body>
+</html>
