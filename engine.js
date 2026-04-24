@@ -1,45 +1,86 @@
-const btn = document.getElementById('analyze-btn');
-const resultArea = document.getElementById('result-area');
+// engine.js - Moteur du bot de trading OTC sur OKX (et autres marchés)
 
-// Mise à jour du décompte 1 min en temps réel
-setInterval(() => {
-    const now = new Date();
-    const seconds = now.getSeconds();
-    const timeLeft = 60 - seconds;
-    document.getElementById('timer-display').innerText = `PROCHAINE BOUGIE DANS : ${timeLeft}s`;
-    
-    // Simulation de mouvement de prix pour le marché sélectionné
-    const mockPrice = (1.08520 + (Math.random() * 0.00100)).toFixed(5);
-    document.getElementById('live-price').innerText = mockPrice;
-}, 1000);
+import { getTradingSignal } from './signals.js';
 
-btn.addEventListener('click', () => {
-    btn.innerText = "CONNEXION SERVEURS...";
-    btn.disabled = true;
+// Historique des prix (on garde ~100 dernières bougies)
+let priceHistory = [];
 
-    // Délai d'analyse pour synchronisation officielle
-    setTimeout(() => {
-        const chance = Math.random() * 100;
-        let signal = "";
-        let color = "";
-        let conf = Math.floor(Math.random() * (99 - 88 + 1)) + 88;
+// Configuration des paires OTC / Spot (tu peux en ajouter)
+const symbols = [
+    "BTC-USDT",
+    "ETH-USDT",
+    "USDT-TRY",   // exemple de paire OTC populaire
+    "BTC-USDC"
+];
 
-        if (chance > 50) {
-            signal = "🟢 CALL (HAUSSE)";
-            color = "#2ecc71";
-        } else {
-            signal = "🔴 PUT (BAISSE)";
-            color = "#e74c3c";
+// Connexion WebSocket OKX (public - pas besoin de clé API pour les prix)
+function connectWebSocket() {
+    const ws = new WebSocket("wss://ws.okx.com:8443/ws/v5/public");
+
+    ws.onopen = () => {
+        console.log("✅ Connecté au WebSocket OKX");
+
+        // S'abonner aux tickers en temps réel
+        const subscribeMsg = {
+            op: "subscribe",
+            args: symbols.map(sym => ({
+                channel: "tickers",
+                instId: sym
+            }))
+        };
+        ws.send(JSON.stringify(subscribeMsg));
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.data && data.data[0]) {
+            const ticker = data.data[0];
+            const price = parseFloat(ticker.last);
+            const symbol = ticker.instId;
+
+            // Mise à jour de l'historique pour cette paire
+            if (!priceHistory[symbol]) priceHistory[symbol] = [];
+            
+            priceHistory[symbol].push(price);
+            if (priceHistory[symbol].length > 200) {
+                priceHistory[symbol].shift(); // garder seulement les 200 dernières
+            }
+
+            // Générer un signal toutes les ~5-10 secondes (ou sur chaque tick)
+            if (priceHistory[symbol].length % 5 === 0) {  // ajuste la fréquence
+                const signal = getTradingSignal(priceHistory[symbol]);
+                
+                console.log(`📊 Signal pour ${symbol} : ${signal.signal} | Force: ${signal.strength}% | RSI: ${signal.rsi} | Prix: ${price}`);
+                
+                // Ici tu peux afficher sur l'interface (index.html) ou envoyer à ton bot
+                updateUI(symbol, signal);   // fonction que tu vas créer dans index.html
+            }
         }
+    };
 
-        document.getElementById('signal-type').innerText = signal;
-        document.getElementById('signal-type').style.color = color;
-        document.getElementById('conf-val').innerText = conf + "%";
-        document.getElementById('confidence-level').style.width = conf + "%";
-        document.getElementById('confidence-level').style.background = color;
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => {
+        console.log("❌ WebSocket fermé - reconnexion dans 5s...");
+        setTimeout(connectWebSocket, 5000);
+    };
+}
 
-        resultArea.classList.remove('hidden');
-        btn.innerText = "▶ ANALYSER MAINTENANT";
-        btn.disabled = false;
-    }, 1500);
-});
+// Fonction pour mettre à jour l'interface (à appeler depuis index.html)
+function updateUI(symbol, signal) {
+    // Exemple : tu peux lier ça à des éléments HTML
+    console.log("Signal prêt pour affichage :", signal);
+    
+    // Plus tard tu feras : document.getElementById('signal-' + symbol).innerHTML = ...
+}
+
+// Lancement du bot
+export function startBot() {
+    console.log("🚀 Bot-trading démarré - Recherche de signaux OTC...");
+    connectWebSocket();
+    
+    // Optionnel : ajouter d'autres sources (Binance, CoinGecko REST, etc.)
+}
+
+// Pour tester directement
+// startBot();
