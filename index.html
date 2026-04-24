@@ -1,17 +1,88 @@
-<select id="market-select">
-    <optgroup label="Devises OTC">
-        <option value="EURUSD_OTC">EUR/USD OTC (92%)</option>
-        <option value="GBPUSD_OTC">GBP/USD OTC (92%)</option>
-        <option value="USDJPY_OTC">USD/JPY OTC (91%)</option>
-        <option value="AUDUSD_OTC">AUD/USD OTC (90%)</option>
-    </optgroup>
-    <optgroup label="Actions OTC">
-        <option value="APPLE_OTC">APPLE OTC (92%)</option>
-        <option value="AMAZON_OTC">AMAZON OTC (92%)</option>
-        <option value="MICROSOFT_OTC">MICROSOFT OTC (91%)</option>
-    </optgroup>
-    <optgroup label="Indices & Crypto">
-        <option value="CRYPTO_IDX">CRYPTO IDX (95%)</option>
-        <option value="BITCOIN_OTC">BITCOIN OTC (89%)</option>
-    </optgroup>
-</select>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGNAL BOT PRO - OTC</title>
+    <style>
+        /* On met le CSS directement ici pour éviter les bugs de chargement */
+        body { background: #050a12; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { max-width: 400px; width: 100%; background: #0d1421; padding: 25px; border-radius: 15px; border: 1px solid #1a263a; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        h1 { color: #4facfe; font-size: 1.6em; margin-bottom: 5px; text-transform: uppercase; }
+        .subtitle { color: #5c6b84; font-size: 0.75em; letter-spacing: 1px; margin-bottom: 20px; }
+        .warning-box { background: rgba(231, 76, 60, 0.1); color: #e74c3c; padding: 12px; font-size: 0.75em; border-radius: 5px; margin-bottom: 20px; border: 1px solid #e74c3c; line-height: 1.4; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        .control-group { flex: 1; text-align: left; }
+        label { display: block; font-size: 0.7em; color: #5c6b84; margin-bottom: 5px; font-weight: bold; }
+        select { width: 100%; background: #162031; color: white; border: 1px solid #2a3a52; padding: 12px; border-radius: 8px; outline: none; cursor: pointer; }
+        #analyze-btn { width: 100%; padding: 16px; background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%); border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3); font-size: 1em; }
+        #analyze-btn:active { transform: scale(0.98); }
+        .risk-management { margin-top: 30px; background: rgba(255, 193, 7, 0.05); padding: 15px; border-radius: 10px; border: 1px solid #332b12; text-align: left; }
+        .risk-management h3 { color: #f1c40f; font-size: 0.85em; margin-top: 0; margin-bottom: 10px; }
+        .risk-management ul { list-style: none; padding: 0; margin: 0; font-size: 0.8em; }
+        .risk-management li { margin-bottom: 8px; color: #8494ab; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
+        .risk-management span { color: #4facfe; float: right; font-weight: bold; }
+        #result-area { margin-top: 20px; background: #162031; padding: 20px; border-radius: 10px; border: 1px dashed #2a3a52; }
+        .hidden { display: none; }
+        #confidence-bar-bg { background: #050a12; height: 10px; border-radius: 5px; margin: 15px 0; overflow: hidden; }
+        #confidence-level { height: 100%; width: 0%; transition: width 1s ease-in-out; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ SIGNAL BOT PRO</h1>
+        <p class="subtitle">BINARY OPTIONS INDICATOR ANALYZER</p>
+
+        <div class="warning-box">
+            ⚠️ OUTIL ÉDUCATIF – Le trading comporte des risques de perte en capital. Analysez toujours avant de miser.
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>PAIRE</label>
+                <select id="market-select">
+                    <optgroup label="Devises OTC">
+                        <option value="EURUSD_OTC">EUR/USD OTC (92%)</option>
+                        <option value="GBPUSD_OTC">GBP/USD OTC (92%)</option>
+                        <option value="USDJPY_OTC">USD/JPY OTC (91%)</option>
+                    </optgroup>
+                    <optgroup label="Indices & Crypto">
+                        <option value="CRYPTO_IDX">CRYPTO IDX (95%)</option>
+                        <option value="BITCOIN_OTC">BITCOIN OTC (89%)</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>EXPIRATION</label>
+                <select id="time-select">
+                    <option value="1">1 min</option>
+                    <option value="5">5 min</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="analyze-btn">▶ ANALYSER</button>
+
+        <div id="result-area" class="hidden">
+            <h2 id="signal-type" style="margin: 0; font-size: 1.4em;">--</h2>
+            <div id="confidence-bar-bg">
+                <div id="confidence-level"></div>
+            </div>
+            <p style="font-size: 0.9em; color: #8494ab; margin: 5px 0;">Confiance: <span id="confidence-value" style="color: white; font-weight: bold;">0%</span></p>
+            <p style="font-size: 0.9em; color: #8494ab; margin: 5px 0;">Prix d'entrée: <span id="entry-price" style="color: white; font-weight: bold;">0.00000</span></p>
+        </div>
+
+        <div class="risk-management">
+            <h3>💰 GESTION DU RISQUE</h3>
+            <ul>
+                <li>Max par trade: <span>1-2% du capital</span></li>
+                <li>Signal min requis: <span>≥ 85% confiance</span></li>
+                <li>Max trades/jour: <span>5-8 trades</span></li>
+                <li>Tendance OTC: <span>Suivre le flux</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+</body>
+</html>
