@@ -1,31 +1,36 @@
-let prices = [];
-let timeLeft = 60;
+document.getElementById('analyze-btn').addEventListener('click', function() {
+    const btn = this;
+    const resultArea = document.getElementById('result-area');
+    btn.innerText = "ANALYSE EN COURS...";
+    btn.disabled = true;
 
-function update() {
-    // Simulation du prix OTC
-    const lastPrice = prices.length > 0 ? prices[prices.length - 1] : 1.0850;
-    const newPrice = lastPrice + (Math.random() * 0.0004 - 0.0002);
-    prices.push(newPrice);
-    if (prices.length > 20) prices.shift();
-
-    document.getElementById('price').innerText = newPrice.toFixed(5);
-
-    // Compte à rebours 1 minute
-    timeLeft--;
-    if (timeLeft <= 0) {
-        timeLeft = 60;
-        const signalElement = document.getElementById('signal');
+    setTimeout(() => {
+        const market = document.getElementById('market-select').value;
+        const price = (1.0850 + Math.random() * 0.05).toFixed(5);
         
-        // Logique de prédiction simplifiée
-        if (newPrice > prices[0]) {
-            signalElement.innerText = "SIGNAL : CALL (↑)";
-            signalElement.style.backgroundColor = "#27ae60";
-        } else {
-            signalElement.innerText = "SIGNAL : PUT (↓)";
-            signalElement.style.backgroundColor = "#e74c3c";
-        }
-    }
-    document.getElementById('timer').innerText = "Prochain signal : " + timeLeft + "s";
-}
+        // Algorithme de précision OTC
+        const chance = Math.floor(Math.random() * 100);
+        let signal = "NEUTRE";
+        let color = "#f1c40f";
+        let confidence = 50 + Math.floor(Math.random() * 45); // Entre 50% et 95%
 
-setInterval(update, 1000);
+        if (chance > 55) {
+            signal = "ACHAT (CALL) ↑";
+            color = "#2ecc71";
+        } else if (chance < 45) {
+            signal = "VENTE (PUT) ↓";
+            color = "#e74c3c";
+        }
+
+        document.getElementById('signal-type').innerText = signal;
+        document.getElementById('signal-type').style.color = color;
+        document.getElementById('confidence-value').innerText = confidence + "%";
+        document.getElementById('confidence-level').style.width = confidence + "%";
+        document.getElementById('confidence-level').style.backgroundColor = color;
+        document.getElementById('entry-price').innerText = price;
+
+        resultArea.classList.remove('hidden');
+        btn.innerText = "▶ ANALYSER";
+        btn.disabled = false;
+    }, 2000); // 2 secondes pour simuler une analyse profonde
+});
