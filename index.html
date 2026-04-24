@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTC Predictor Pro</title>
+    <style>
+        body { background: #0b0e11; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        .card { background: #1e2329; border-radius: 15px; padding: 30px; width: 300px; margin: auto; border: 1px solid #333; }
+        #price { font-size: 2.5em; color: #f0b90b; margin: 10px 0; }
+        #timer { color: #848e9c; }
+        #signal { font-weight: bold; font-size: 1.5em; margin-top: 20px; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3>EUR/USD OTC (1 min)</h3>
+        <div id="price">0.0000</div>
+        <div id="timer">Prochain signal : 60s</div>
+        <div id="signal">ANALYSE...</div>
+    </div>
+    <script src="engine.js"></script>
+</body>
+</html>
