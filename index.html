@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid AI Engine v3.2 - Réel</title>
+    <title>Hybrid AI Engine v3.4</title>
     <style>
         :root { --bg: #0a0b0d; --card: #16181c; --blue: #00d2ff; --green: #39ff14; --red: #ff3131; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -17,18 +17,19 @@
         .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.6rem; font-weight: bold; }
         .btn { background: linear-gradient(45deg, var(--blue), #0072ff); color: white; border: none; padding: 16px; width: 100%; border-radius: 50px; font-weight: bold; font-size: 1.05rem; cursor: pointer; margin: 8px 0; transition: 0.3s; }
         .btn:disabled { background: #444; cursor: not-allowed; opacity: 0.6; }
+        .btn-green { background: linear-gradient(45deg, var(--green), #00c000); }
         .btn-red { background: linear-gradient(45deg, var(--red), #c00); }
-        .res-area { margin-top: 20px; min-height: 110px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid #333; text-align: left; }
+        .res-area { margin-top: 20px; min-height: 140px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid #333; text-align: left; }
         #signal { font-size: 1.45rem; font-weight: bold; margin-bottom: 8px; }
-        .log { font-size: 0.82rem; color: #aaa; max-height: 120px; overflow-y: auto; }
+        .log { font-size: 0.82rem; color: #aaa; max-height: 160px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Hybrid AI Trading Bot</h2>
+    <h2>Hybrid AI Engine v3.4</h2>
     
-    <input type="text" id="api-token" class="token-input" placeholder="Colle ton Deriv API Token ici" value="">
+    <input type="text" id="api-token" class="token-input" placeholder="Colle ton Deriv API Token ici">
     <select id="market-select" class="market-select">
         <option value="frxEURUSD">EUR/USD OTC (92%)</option>
         <option value="frxGBPUSD">GBP/USD OTC (90%)</option>
@@ -36,33 +37,29 @@
         <option value="frxAUDUSD">AUD/USD OTC (88%)</option>
     </select>
 
-    <div class="price-box" id="price-box">VÉRIFICATION...</div>
+    <div class="price-box" id="price-box">CONNEXION...</div>
 
     <div class="timer-container">
         <svg class="timer-svg"><circle class="timer-bg" cx="65" cy="65" r="60"></circle><circle id="bar" class="timer-progress" cx="65" cy="65" r="60"></circle></svg>
         <div class="timer-text" id="timer">60</div>
     </div>
 
-    <input type="number" id="stake" class="stake-input" value="10" placeholder="Stake (USD)" min="1" step="1">
+    <input type="number" id="stake" class="stake-input" value="10" placeholder="Stake (USD)" min="1">
 
     <button class="btn" id="analyze-btn" onclick="runAnalysis()">ANALYSER MAINTENANT</button>
-    <button class="btn btn-red" id="buy-call" onclick="placeTrade('CALL')" disabled>BUY CALL ↑</button>
+    <button class="btn btn-green" id="buy-call" onclick="placeTrade('CALL')" disabled>BUY CALL ↑</button>
     <button class="btn btn-red" id="buy-put" onclick="placeTrade('PUT')" disabled>BUY PUT ↓</button>
 
     <div class="res-area">
-        <div id="signal">PRÊT - Entrez votre API Token</div>
-        <div id="indicators" style="font-size: 0.85rem; color: #888; margin-top: 8px;"></div>
+        <div id="signal">PRÊT</div>
+        <div id="indicators" style="font-size: 0.85rem; color: #888; margin: 8px 0;"></div>
         <div id="log" class="log"></div>
     </div>
 </div>
 
 <script>
-    // ================== CONFIGURATION ==================
-    let ws;
-    let prices = [];
-    let token = '';
-    let currentSymbol = 'frxEURUSD';
-    let lastContractId = null;
+    let ws, prices = [], currentSymbol = 'frxEURUSD', pendingProposal = false;
+    let proposalId = null;
 
     const pBox = document.getElementById('price-box');
     const sBox = document.getElementById('signal');
@@ -75,37 +72,32 @@
     const timerTxt = document.getElementById('timer');
     const circ = 377;
 
-    // ================== INDICATEURS TECHNIQUES ==================
+    const tokenInput = document.getElementById('api-token');
+    tokenInput.value = localStorage.getItem('deriv_token') || '';
+    tokenInput.addEventListener('input', () => localStorage.setItem('deriv_token', tokenInput.value.trim()));
+
+    function log(msg) {
+        const time = new Date().toLocaleTimeString('fr-FR');
+        logBox.innerHTML += `<div>[${time}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+        if (logBox.children.length > 50) logBox.removeChild(logBox.firstChild);
+    }
+
     function calculateRSI(data, period = 14) {
         if (data.length < period + 1) return 50;
         let gains = 0, losses = 0;
         for (let i = data.length - period; i < data.length; i++) {
-            const change = data[i] - data[i-1];
-            if (change > 0) gains += change;
-            else losses -= change;
+            const ch = data[i] - data[i - 1];
+            if (ch > 0) gains += ch; else losses -= ch;
         }
         const avgGain = gains / period;
-        const avgLoss = losses / period;
-        if (avgLoss === 0) return 100;
+        const avgLoss = losses / period || 0.0001;
         const rs = avgGain / avgLoss;
-        return Math.min(100, Math.max(0, 100 - (100 / (1 + rs))));
-    }
-
-    function calculateBollinger(data, period = 20, stdDev = 2) {
-        if (data.length < period) return { middle: null, upper: null, lower: null };
-        const slice = data.slice(-period);
-        const middle = slice.reduce((a,b)=>a+b,0) / period;
-        const variance = slice.reduce((a,b) => a + Math.pow(b - middle, 2), 0) / period;
-        const std = Math.sqrt(variance);
-        return {
-            middle: middle,
-            upper: middle + stdDev * std,
-            lower: middle - stdDev * std
-        };
+        return Math.max(0, Math.min(100, 100 - 100 / (1 + rs)));
     }
 
     function calculateEMA(data, period) {
-        if (data.length < period) return data[data.length-1] || 0;
+        if (data.length < period) return data[data.length - 1] || 0;
         let ema = data[0];
         const k = 2 / (period + 1);
         for (let i = 1; i < data.length; i++) {
@@ -115,185 +107,28 @@
     }
 
     function getSignal() {
-        if (prices.length < 30) return { signal: "INSUFFISANT", color: "white", details: "Attendez plus de données" };
+        if (prices.length < 20) return { signal: "EN ATTENTE", color: "#888", details: "Collecte de ticks..." };
 
         const rsi = calculateRSI(prices);
-        const bb = calculateBollinger(prices);
-        const emaFast = calculateEMA(prices, 9);
-        const emaSlow = calculateEMA(prices, 21);
+        const slice = prices.slice(-20);
+        const middle = slice.reduce((a, b) => a + b, 0) / 20;
+        const std = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - middle, 2), 0) / 20);
+        const bbUpper = middle + 2 * std;
+        const bbLower = middle - 2 * std;
+
+        const ema9 = calculateEMA(prices, 9);
+        const ema21 = calculateEMA(prices, 21);
         const current = prices[prices.length - 1];
 
-        let signalText = "NEUTRAL";
-        let color = "white";
-
-        const bullish = (current < bb.lower || rsi < 35) && emaFast > emaSlow;
-        const bearish = (current > bb.upper || rsi > 65) && emaFast < emaSlow;
-
-        if (bullish) {
-            signalText = "HAUSSE (CALL) ↑";
-            color = "var(--green)";
-        } else if (bearish) {
-            signalText = "BAISSE (PUT) ↓";
-            color = "var(--red)";
+        let signal = "NEUTRAL", color = "white";
+        if (current < bbLower && rsi < 40 && ema9 > ema21) {
+            signal = "HAUSSE (CALL) ↑"; color = "var(--green)";
+        } else if (current > bbUpper && rsi > 60 && ema9 < ema21) {
+            signal = "BAISSE (PUT) ↓"; color = "var(--red)";
         }
 
-        const details = `RSI: ${rsi.toFixed(1)} | EMA9/21: ${emaFast.toFixed(5)}/${emaSlow.toFixed(5)} | BB: ${bb.lower.toFixed(5)} - ${bb.middle.toFixed(5)} - ${bb.upper.toFixed(5)}`;
-
-        return { signal: signalText, color: color, details: details, rsi, bb, emaFast, emaSlow };
+        const details = `RSI: ${rsi.toFixed(1)} | EMA 9/21: ${ema9.toFixed(5)}/${ema21.toFixed(5)} | BB: ${bbLower.toFixed(5)} - ${bbUpper.toFixed(5)}`;
+        return { signal, color, details };
     }
 
-    // ================== WEBSOCKET DERIV ==================
-    function startApp() {
-        if (ws) ws.close();
-        currentSymbol = document.getElementById('market-select').value;
-        token = document.getElementById('api-token').value.trim();
-
-        pBox.innerText = "CONNEXION...";
-        prices = [];
-
-        ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=1089`);
-
-        ws.onopen = () => {
-            log("✅ WebSocket connecté");
-            ws.send(JSON.stringify({ ticks: currentSymbol }));
-            if (token) {
-                ws.send(JSON.stringify({ authorize: token }));
-            }
-        };
-
-        ws.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-
-            if (data.tick) {
-                const p = data.tick.quote;
-                pBox.innerText = p.toFixed(5);
-                prices.push(p);
-                if (prices.length > 100) prices.shift();
-            }
-
-            if (data.authorize) {
-                log("✅ Autorisation réussie - Compte connecté");
-            }
-
-            if (data.buy) {
-                if (data.buy.contract_id) {
-                    lastContractId = data.buy.contract_id;
-                    log(`✅ Trade placé ! Contract ID: ${lastContractId}`);
-                } else if (data.buy.error) {
-                    log(`❌ Erreur achat: ${data.buy.error.message}`);
-                }
-            }
-        };
-
-        ws.onclose = () => {
-            log("⚠️ Connexion fermée, reconnexion...");
-            setTimeout(startApp, 3000);
-        };
-
-        ws.onerror = (e) => log("❌ Erreur WebSocket");
-    }
-
-    function log(message) {
-        const time = new Date().toLocaleTimeString('fr-FR');
-        logBox.innerHTML += `<div>[${time}] ${message}</div>`;
-        logBox.scrollTop = logBox.scrollHeight;
-        if (logBox.children.length > 30) logBox.removeChild(logBox.children[0]);
-    }
-
-    // ================== ANALYSE ==================
-    function runAnalysis() {
-        if (prices.length < 25) {
-            alert("Attendez au moins 25 ticks pour l'analyse...");
-            return;
-        }
-
-        analyzeBtn.disabled = true;
-        sBox.innerText = "ANALYSE EN COURS...";
-        sBox.style.color = "var(--blue)";
-
-        setTimeout(() => {
-            const result = getSignal();
-            
-            sBox.innerText = result.signal;
-            sBox.style.color = result.color;
-            indBox.innerHTML = result.details;
-
-            // Active les boutons de trade selon le signal
-            callBtn.disabled = result.signal.includes("CALL") ? false : true;
-            putBtn.disabled = result.signal.includes("PUT") ? false : true;
-
-            analyzeBtn.disabled = false;
-        }, 1200);
-    }
-
-    // ================== PLACER UN TRADE ==================
-    async function placeTrade(contractType) {
-        if (!token) {
-            alert("Veuillez entrer votre Deriv API Token !");
-            return;
-        }
-        if (!lastContractId && !confirm("Aucun contrat en cours. Voulez-vous vraiment acheter ?")) return;
-
-        const stake = parseFloat(document.getElementById('stake').value) || 10;
-
-        const proposalMsg = {
-            proposal: 1,
-            amount: stake,
-            basis: "stake",
-            contract_type: contractType,
-            currency: "USD",
-            duration: 1,
-            duration_unit: "m",
-            symbol: currentSymbol
-        };
-
-        ws.send(JSON.stringify(proposalMsg));
-
-        // Après proposal, on peut acheter directement (simplifié)
-        setTimeout(() => {
-            const buyMsg = {
-                buy: 1,
-                price: stake,
-                parameters: {
-                    contract_type: contractType,
-                    symbol: currentSymbol,
-                    duration: 1,
-                    duration_unit: "m"
-                }
-            };
-            ws.send(JSON.stringify(buyMsg));
-            log(`📤 Envoi ordre ${contractType} - Stake: ${stake} USD`);
-        }, 800);
-    }
-
-    // ================== TIMER ==================
-    function refreshUI() {
-        const end = localStorage.getItem('bot_end');
-        const now = Date.now();
-
-        if (end && now < end) {
-            const rem = Math.round((end - now) / 1000);
-            timerTxt.innerText = rem;
-            bar.style.strokeDashoffset = circ - (rem / 60) * circ;
-        } else {
-            timerTxt.innerText = "60";
-            bar.style.strokeDashoffset = 0;
-            if (end) localStorage.clear();
-        }
-    }
-
-    setInterval(refreshUI, 1000);
-
-    // ================== INITIALISATION ==================
-    window.onload = () => {
-        startApp();
-        document.getElementById('market-select').addEventListener('change', startApp);
-        
-        // Auto-analyse toutes les 60s après le premier chargement
-        setTimeout(() => {
-            if (prices.length > 30) runAnalysis();
-        }, 15000);
-    };
-</script>
-</body>
-</html>
+    function startApp
