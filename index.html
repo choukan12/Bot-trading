@@ -1,3 +1,61 @@
-<div id="market-status" style="margin-bottom: 15px; color: #f1c40f; font-weight: bold;">
-    <span id="countdown-text">Connexion au flux officiel...</span>
-</div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGNAL BOT PRO - LIVE OTC</title>
+    <style>
+        body { background: #050a12; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { max-width: 400px; width: 100%; background: #0d1421; padding: 25px; border-radius: 15px; border: 1px solid #1a263a; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        h1 { color: #4facfe; font-size: 1.5em; margin-bottom: 5px; }
+        .status-bar { background: rgba(241, 156, 18, 0.1); color: #f1c40f; padding: 8px; font-size: 0.8em; border-radius: 5px; margin-bottom: 15px; border: 1px solid #f1c40f; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        .control-group { flex: 1; text-align: left; }
+        label { display: block; font-size: 0.7em; color: #5c6b84; margin-bottom: 5px; font-weight: bold; }
+        select { width: 100%; background: #162031; color: white; border: 1px solid #2a3a52; padding: 10px; border-radius: 8px; outline: none; }
+        #analyze-btn { width: 100%; padding: 16px; background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%); border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        #result-area { margin-top: 20px; background: #162031; padding: 20px; border-radius: 10px; border: 1px dashed #2a3a52; }
+        .hidden { display: none; }
+        #confidence-bar-bg { background: #050a12; height: 8px; border-radius: 4px; margin: 15px 0; overflow: hidden; }
+        #confidence-level { height: 100%; width: 0%; transition: width 0.5s; }
+        .price-live { font-family: monospace; font-size: 1.2em; color: #4facfe; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ SIGNAL BOT PRO</h1>
+        <div class="status-bar" id="countdown-text">Initialisation du flux...</div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>PAIRE (LIVE)</label>
+                <select id="market-select">
+                    <option value="frxEURUSD">EUR/USD</option>
+                    <option value="frxGBPUSD">GBP/USD</option>
+                    <option value="R_100">VOLATILITY 100 (OTC)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>TEMPS</label>
+                <select>
+                    <option>1 min</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="price-live">Prix actuel: <span id="live-price">0.00000</span></div>
+        <button id="analyze-btn">ATTENTE PROCHAINE BOUGIE...</button>
+
+        <div id="result-area" class="hidden">
+            <h2 id="signal-type" style="margin:0;">--</h2>
+            <div id="confidence-bar-bg"><div id="confidence-level"></div></div>
+            <p style="font-size:0.8em;">Confiance: <span id="confidence-value">0%</span></p>
+        </div>
+
+        <div style="margin-top:20px; font-size:0.7em; color:#5c6b84;">
+            Données synchronisées avec les serveurs officiels.
+        </div>
+    </div>
+    <script src="engine.js"></script>
+</body>
+</html>
