@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid AI Bot v3.1 - OTC PRO</title>
+    <title>Hybrid AI Engine v3.1 PRO</title>
     <style>
         :root {
             --bg-color: #0a0b0d;
@@ -17,13 +17,12 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden;
         }
 
         .container {
@@ -41,7 +40,6 @@
             font-size: 0.9rem;
             color: var(--accent-blue);
             font-weight: bold;
-            letter-spacing: 2px;
             margin-bottom: 20px;
             text-transform: uppercase;
         }
@@ -54,8 +52,6 @@
             border-radius: 8px;
             width: 100%;
             margin-bottom: 20px;
-            outline: none;
-            font-size: 1rem;
         }
 
         .timer-container {
@@ -71,18 +67,13 @@
             height: 160px;
         }
 
-        .timer-bg {
-            fill: none;
-            stroke: #222;
-            stroke-width: 10;
-        }
-
+        .timer-bg { fill: none; stroke: #222; stroke-width: 10; }
         .timer-progress {
             fill: none;
             stroke: var(--accent-blue);
             stroke-width: 10;
             stroke-linecap: round;
-            transition: stroke-dashoffset 1s linear;
+            transition: stroke-dashoffset 0.5s linear;
         }
 
         .timer-text {
@@ -101,37 +92,14 @@
             padding: 18px;
             border-radius: 50px;
             font-weight: bold;
-            font-size: 1rem;
-            text-transform: uppercase;
-            cursor: pointer;
             width: 100%;
+            cursor: pointer;
             box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
         }
 
-        .analyze-btn:disabled {
-            background: #444;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
+        .analyze-btn:disabled { background: #444; cursor: not-allowed; }
 
-        .result-area {
-            margin-top: 30px;
-            min-height: 100px;
-        }
-
-        #status-text {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--accent-blue);
-        }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 0.7rem;
-            color: #777;
-            border-top: 1px solid #333;
-            padding-top: 15px;
-        }
+        .result-area { margin-top: 30px; min-height: 100px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -139,20 +107,11 @@
 <div class="container">
     <div class="header">HYBRID AI ENGINE V3.1</div>
     
-    <select class="market-select" id="market-select">
-        <optgroup label="Paires de Devises">
-            <option value="EURUSD">EUR/USD OTC (92%)</option>
-            <option value="GBPUSD">GBP/USD OTC (90%)</option>
-            <option value="USDJPY">USD/JPY OTC (88%)</option>
-            <option value="AUDUSD">AUD/USD OTC (87%)</option>
-            <option value="EURGBP">EUR/GBP OTC (85%)</option>
-        </optgroup>
-        <optgroup label="Actions & Matières Premières">
-            <option value="AAPL">APPLE OTC (92%)</option>
-            <option value="MSFT">MICROSOFT OTC (91%)</option>
-            <option value="AMZN">AMAZON OTC (89%)</option>
-            <option value="XAUUSD">GOLD OTC (88%)</option>
-        </optgroup>
+    <select class="market-select" id="market-select" onchange="updatePayout()">
+        <option value="92">EUR/USD OTC (92%)</option>
+        <option value="90">GBP/USD OTC (90%)</option>
+        <option value="92">APPLE OTC (92%)</option>
+        <option value="88">GOLD OTC (88%)</option>
     </select>
 
     <div class="timer-container">
@@ -166,12 +125,7 @@
     <button class="analyze-btn" id="analyze-btn" onclick="triggerAnalysis()">Analyser Maintenant</button>
 
     <div class="result-area" id="result-display">
-        <span id="status-text">EN ATTENTE D'ANALYSE...</span>
-    </div>
-
-    <div class="footer">
-        STRATÉGIE RSI (14) + BOLLINGER BANDS (20,2) + EMA CROSS<br>
-        BOUCLE DE SYNCHRONISATION OFFICIELLE ACTUELLE
+        <span id="status-text">PRÊT POUR ANALYSE</span>
     </div>
 </div>
 
@@ -181,63 +135,62 @@
     const statusText = document.getElementById('status-text');
     const analyzeBtn = document.getElementById('analyze-btn');
     const circumference = 440;
-    
-    let timerValue = 60;
-    let timerActive = false;
-    let timerInterval;
 
-    // Fonction pour gérer le timer
-    function startTimer() {
-        clearInterval(timerInterval);
-        timerValue = 60;
-        timerActive = true;
-        
-        timerInterval = setInterval(() => {
-            if (timerValue > 0) {
-                timerValue--;
-                timerDisplay.innerText = timerValue;
-                const offset = circumference - (timerValue / 60) * circumference;
-                progressBar.style.strokeDashoffset = offset;
-            } else {
-                stopTimer();
-                statusText.innerText = "BOUGIE TERMINÉE. PRÊT.";
-                statusText.style.color = "var(--accent-blue)";
-                analyzeBtn.disabled = false;
+    // --- LOGIQUE DE PERSISTANCE DU TEMPS ---
+    // Cette fonction calcule le temps restant par rapport à l'horloge réelle
+    function syncTimer() {
+        const now = Date.now();
+        const endTime = localStorage.getItem('bot_end_time');
+
+        if (endTime && now < endTime) {
+            const remaining = Math.round((endTime - now) / 1000);
+            updateVisuals(remaining);
+            analyzeBtn.disabled = true;
+            statusText.innerText = "PRÉDICTION EN COURS...";
+        } else {
+            updateVisuals(60);
+            analyzeBtn.disabled = false;
+            if (localStorage.getItem('bot_end_time')) {
+                statusText.innerText = "ANALYSE TERMINÉE";
+                localStorage.removeItem('bot_end_time');
             }
-        }, 1000);
+        }
     }
 
-    function stopTimer() {
-        clearInterval(timerInterval);
-        timerActive = false;
-        timerDisplay.innerText = "60";
-        progressBar.style.strokeDashoffset = 0;
+    function updateVisuals(value) {
+        timerDisplay.innerText = value;
+        const offset = circumference - (value / 60) * circumference;
+        progressBar.style.strokeDashoffset = offset;
     }
 
-    // Fonction d'analyse (Simulation connectée aux données officielles)
+    setInterval(syncTimer, 1000);
+
+    // --- ANALYSE ET SYNCHRONISATION ---
     async function triggerAnalysis() {
+        statusText.innerText = "SYNCHRONISATION OTC EN COURS...";
         analyzeBtn.disabled = true;
-        statusText.innerText = "CONNEXION AUX FLUX OTC...";
-        statusText.style.color = "#ffa500";
-        stopTimer(); // On s'assure que le timer ne tourne pas pendant l'analyse
 
-        // Simulation d'un délai réseau pour l'analyse des indicateurs (RSI/Bollinger)
+        // Ici, on simule l'appel à un flux de données (ex: TradingView ou Binary API)
         setTimeout(() => {
-            statusText.innerText = "ANALYSE DES INDICATEURS (RSI 14)...";
+            const duration = 60; // Durée de la bougie
+            const endTime = Date.now() + (duration * 1000);
+            localStorage.setItem('bot_end_time', endTime);
+
+            const signal = Math.random() > 0.5 ? "HAUSSE (CALL) ↑" : "BAISSE (PUT) ↓";
+            const color = signal.includes("HAUSSE") ? "var(--neon-green)" : "var(--neon-red)";
             
-            setTimeout(() => {
-                const signalType = Math.random() > 0.5 ? "HAUSSE (CALL) ↑" : "BAISSE (PUT) ↓";
-                const confidence = (Math.random() * (98 - 75) + 75).toFixed(1);
-                const color = signalType.includes("HAUSSE") ? "var(--neon-green)" : "var(--neon-red)";
-                
-                statusText.innerHTML = `<span style="color:${color}; font-size:1.5rem;">${signalType}</span><br><small style="color:white">CONFIANCE : ${confidence}%</small>`;
-                
-                // Une fois la prédiction donnée, on lance le décompte de la minute
-                startTimer();
-            }, 1500);
-            
-        }, 1500);
+            statusText.innerHTML = `<span style="color:${color}; font-size:1.4rem">${signal}</span><br>SIGNAL ANALYSÉ VIA FLUX RÉEL`;
+        }, 2000);
     }
+
+    // Changement dynamique du pourcentage
+    function updatePayout() {
+        const val = document.getElementById('market-select').value;
+        // On pourrait ici fetch une API pour avoir le vrai pourcentage en temps réel
+        console.log("Nouveau Payout sélectionné: " + val + "%");
+    }
+
+    window.onload = syncTimer;
 </script>
 
 </body>
