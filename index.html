@@ -3,21 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTC Predictor Pro</title>
-    <style>
-        body { background: #0b0e11; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .card { background: #1e2329; border-radius: 15px; padding: 30px; width: 300px; margin: auto; border: 1px solid #333; }
-        #price { font-size: 2.5em; color: #f0b90b; margin: 10px 0; }
-        #timer { color: #848e9c; }
-        #signal { font-weight: bold; font-size: 1.5em; margin-top: 20px; padding: 10px; border-radius: 5px; }
-    </style>
+    <title>SIGNAL BOT PRO - OTC</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="card">
-        <h3>EUR/USD OTC (1 min)</h3>
-        <div id="price">0.0000</div>
-        <div id="timer">Prochain signal : 60s</div>
-        <div id="signal">ANALYSE...</div>
+    <div class="container">
+        <header>
+            <h1>⚡ SIGNAL BOT PRO</h1>
+            <p class="subtitle">BINARY OPTIONS INDICATOR ANALYZER</p>
+        </header>
+
+        <div class="warning-box">
+            ⚠️ OUTIL ÉDUCATIF – Le trading comporte des risques de perte en capital
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>PAIRE</label>
+                <select id="market-select">
+                    <option value="EURUSD_OTC">EUR/USD OTC</option>
+                    <option value="GBPUSD_OTC">GBP/USD OTC</option>
+                    <option value="USDJPY_OTC">USD/JPY OTC</option>
+                    <option value="CRYPTO_IDX">CRYPTO IDX</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>EXPIRATION</label>
+                <select id="time-select">
+                    <option value="1">1 min</option>
+                    <option value="5">5 min</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="analyze-btn">▶ ANALYSER</button>
+
+        <div id="result-area" class="hidden">
+            <div class="signal-card">
+                <h2 id="signal-type">ANALYSE EN COURS...</h2>
+                <div class="confidence-bar"><div id="confidence-level"></div></div>
+                <p>Confiance: <span id="confidence-value">0%</span></p>
+                <p>Prix d'entrée: <span id="entry-price">0.0000</span></p>
+            </div>
+        </div>
+
+        <div class="risk-management">
+            <h3>💰 GESTION DU RISQUE – RÈGLES ESSENTIELLES</h3>
+            <ul>
+                <li>Max par trade: <span>1-2% du capital</span></li>
+                <li>Signal min requis: <span>≥ 85% confiance</span></li>
+                <li>Max trades/jour: <span>5-8 trades</span></li>
+                <li>Indicateurs alignés: <span>3/5 minimum</span></li>
+            </ul>
+        </div>
     </div>
     <script src="engine.js"></script>
 </body>
