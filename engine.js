@@ -1,86 +1,54 @@
-// engine.js - Moteur du bot de trading OTC sur OKX (et autres marchés)
+// engine.js - Version optimisée pour signaux 1 minute (rapide + fiable)
 
 import { getTradingSignal } from './signals.js';
+import { dataManager } from './dataSources.js';
 
-// Historique des prix (on garde ~100 dernières bougies)
-let priceHistory = [];
-
-// Configuration des paires OTC / Spot (tu peux en ajouter)
 const symbols = [
-    "BTC-USDT",
-    "ETH-USDT",
-    "USDT-TRY",   // exemple de paire OTC populaire
-    "BTC-USDC"
+    "BTC-USDT", "ETH-USDT", "SOL-USDT", "XRP-USDT",
+    "DOGE-USDT", "TON-USDT", "USDT-TRY", "BTC-TRY", "ETH-TRY"
 ];
 
-// Connexion WebSocket OKX (public - pas besoin de clé API pour les prix)
-function connectWebSocket() {
-    const ws = new WebSocket("wss://ws.okx.com:8443/ws/v5/public");
+let isRunning = false;
+let signalInterval = null;
 
-    ws.onopen = () => {
-        console.log("✅ Connecté au WebSocket OKX");
-
-        // S'abonner aux tickers en temps réel
-        const subscribeMsg = {
-            op: "subscribe",
-            args: symbols.map(sym => ({
-                channel: "tickers",
-                instId: sym
-            }))
-        };
-        ws.send(JSON.stringify(subscribeMsg));
-    };
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        if (data.data && data.data[0]) {
-            const ticker = data.data[0];
-            const price = parseFloat(ticker.last);
-            const symbol = ticker.instId;
-
-            // Mise à jour de l'historique pour cette paire
-            if (!priceHistory[symbol]) priceHistory[symbol] = [];
-            
-            priceHistory[symbol].push(price);
-            if (priceHistory[symbol].length > 200) {
-                priceHistory[symbol].shift(); // garder seulement les 200 dernières
-            }
-
-            // Générer un signal toutes les ~5-10 secondes (ou sur chaque tick)
-            if (priceHistory[symbol].length % 5 === 0) {  // ajuste la fréquence
-                const signal = getTradingSignal(priceHistory[symbol]);
-                
-                console.log(`📊 Signal pour ${symbol} : ${signal.signal} | Force: ${signal.strength}% | RSI: ${signal.rsi} | Prix: ${price}`);
-                
-                // Ici tu peux afficher sur l'interface (index.html) ou envoyer à ton bot
-                updateUI(symbol, signal);   // fonction que tu vas créer dans index.html
-            }
-        }
-    };
-
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    ws.onclose = () => {
-        console.log("❌ WebSocket fermé - reconnexion dans 5s...");
-        setTimeout(connectWebSocket, 5000);
-    };
-}
-
-// Fonction pour mettre à jour l'interface (à appeler depuis index.html)
-function updateUI(symbol, signal) {
-    // Exemple : tu peux lier ça à des éléments HTML
-    console.log("Signal prêt pour affichage :", signal);
-    
-    // Plus tard tu feras : document.getElementById('signal-' + symbol).innerHTML = ...
-}
-
-// Lancement du bot
 export function startBot() {
-    console.log("🚀 Bot-trading démarré - Recherche de signaux OTC...");
-    connectWebSocket();
-    
-    // Optionnel : ajouter d'autres sources (Binance, CoinGecko REST, etc.)
+    if (isRunning) return;
+    isRunning = true;
+
+    console.log("🚀 Bot Trading OTC - Mode 1 minute activé");
+
+    // Connexions aux sources (OKX prioritaire + Binance + CoinGecko)
+    dataManager.connectOKX(symbols);
+    dataManager.connectBinance(symbols);
+
+    // CoinGecko en backup toutes les 20 secondes
+    setInterval(() => dataManager.fetchFromCoinGecko(), 20000);
+
+    // === GÉNÉRATION DE SIGNAUX TOUTES LES ~8-10 SECONDES (adapté 1 minute) ===
+    signalInterval = setInterval(() => {
+        symbols.forEach(symbol => {
+            const history = dataManager.getPriceHistory(symbol);
+            
+            if (history.length >= 25) {  // assez de données pour analyse 1 min
+                const signal = getTradingSignal(history);
+                
+                // On affiche TOUS les signaux (même NEUTRAL) + on filtre les forts pour alerte
+                if (typeof window !== 'undefined' && window.updateUI) {
+                    window.updateUI(symbol, signal);
+                }
+
+                // Log seulement les signaux forts (≥ 65%)
+                if (signal.strength >= 65) {
+                    console.log(`🔥 SIGNAL FORT 1 MIN → ${symbol} | ${signal.signal} | Force: ${signal.strength}% | RSI: ${signal.rsi}`);
+                }
+            }
+        });
+    }, 8000); // ~ toutes les 8 secondes → bon compromis pour 1 minute sans spam
 }
 
-// Pour tester directement
-// startBot();
+export function stopBot() {
+    if (signalInterval) clearInterval(signalInterval);
+    dataManager.closeAll();
+    isRunning = false;
+    console.log("⏹️ Bot arrêté");
+}
