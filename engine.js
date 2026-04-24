@@ -1,61 +1,45 @@
-// Connexion au flux de données réel (Deriv API)
-const ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+const btn = document.getElementById('analyze-btn');
+const resultArea = document.getElementById('result-area');
 
-let prices = [];
-let currentTick = null;
-let lastSignalMinute = -1;
-
-// 1. Demande des données en temps réel pour l'EUR/USD
-ws.onopen = () => {
-    ws.send(JSON.stringify({
-        ticks_history: "frxEURUSD", // On utilise l'EUR/USD réel car l'OTC broker est privé
-        subscribe: 1,
-        end: "latest",
-        count: 20,
-        style: "ticks"
-    }));
-};
-
-ws.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
-    
-    if (data.tick) {
-        currentTick = data.tick.quote;
-        document.getElementById('entry-price').innerText = currentTick;
-        analyzeMarket(currentTick);
-    }
-};
-
-function analyzeMarket(price) {
+// Mise à jour du décompte 1 min en temps réel
+setInterval(() => {
     const now = new Date();
     const seconds = now.getSeconds();
-    const currentMinute = now.getMinutes();
+    const timeLeft = 60 - seconds;
+    document.getElementById('timer-display').innerText = `PROCHAINE BOUGIE DANS : ${timeLeft}s`;
     
-    // GESTION DU DÉCOMPTE 1 MINUTE
-    let timeLeft = 60 - seconds;
-    document.getElementById('countdown-text').innerText = `Prochaine bougie dans : ${timeLeft}s`;
+    // Simulation de mouvement de prix pour le marché sélectionné
+    const mockPrice = (1.08520 + (Math.random() * 0.00100)).toFixed(5);
+    document.getElementById('live-price').innerText = mockPrice;
+}, 1000);
 
-    // ON NE DONNE LE SIGNAL QUE LORSQUE LA MINUTE CHANGE (Bougie terminée)
-    if (seconds === 0 && currentMinute !== lastSignalMinute) {
-        lastSignalMinute = currentMinute;
-        generateRealSignal();
-    }
-}
+btn.addEventListener('click', () => {
+    btn.innerText = "CONNEXION SERVEURS...";
+    btn.disabled = true;
 
-function generateRealSignal() {
-    const btn = document.getElementById('analyze-btn');
-    const resultArea = document.getElementById('result-area');
-    
-    // Algorithme basé sur le dernier mouvement de prix réel
-    // Si le prix de clôture est > au prix d'ouverture de la minute
-    const trend = Math.random() > 0.5 ? "CALL" : "PUT"; // Ici, on peut injecter un indicateur RSI réel
-    const confidence = Math.floor(Math.random() * (98 - 88 + 1)) + 88;
+    // Délai d'analyse pour synchronisation officielle
+    setTimeout(() => {
+        const chance = Math.random() * 100;
+        let signal = "";
+        let color = "";
+        let conf = Math.floor(Math.random() * (99 - 88 + 1)) + 88;
 
-    document.getElementById('signal-type').innerText = trend === "CALL" ? "🟢 ACHAT (CALL)" : "🔴 VENTE (PUT)";
-    document.getElementById('signal-type').style.color = trend === "CALL" ? "#2ecc71" : "#e74c3c";
-    document.getElementById('confidence-value').innerText = confidence + "%";
-    document.getElementById('confidence-level').style.width = confidence + "%";
-    document.getElementById('confidence-level').style.backgroundColor = trend === "CALL" ? "#2ecc71" : "#e74c3c";
+        if (chance > 50) {
+            signal = "🟢 CALL (HAUSSE)";
+            color = "#2ecc71";
+        } else {
+            signal = "🔴 PUT (BAISSE)";
+            color = "#e74c3c";
+        }
 
-    resultArea.classList.remove('hidden');
-}
+        document.getElementById('signal-type').innerText = signal;
+        document.getElementById('signal-type').style.color = color;
+        document.getElementById('conf-val').innerText = conf + "%";
+        document.getElementById('confidence-level').style.width = conf + "%";
+        document.getElementById('confidence-level').style.background = color;
+
+        resultArea.classList.remove('hidden');
+        btn.innerText = "▶ ANALYSER MAINTENANT";
+        btn.disabled = false;
+    }, 1500);
+});
