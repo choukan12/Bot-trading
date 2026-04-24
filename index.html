@@ -1,112 +1,79 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bot Trading OTC - Signaux en Temps Réel</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🤖 Bot Trading OTC</h1>
-            <p>Signaux en temps réel sur OKX et marchés mondiaux</p>
-            <button id="startBtn" class="btn-start">▶️ Démarrer les Signaux</button>
-            <button id="stopBtn" class="btn-stop" style="display: none;">⏹️ Arrêter</button>
-        </header>
+<script type="module">
+    import { startBot } from './engine.js';
 
-        <div class="status">
-            <span id="statusText">Statut : Prêt</span>
-        </div>
+    let isRunning = false;
 
-        <div id="signalsContainer" class="signals-grid">
-            <!-- Les signaux apparaîtront ici dynamiquement -->
-        </div>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusText = document.getElementById('statusText');
+    const signalsContainer = document.getElementById('signalsContainer');
+    const logContainer = document.getElementById('logContainer');
 
-        <div class="log">
-            <h3>Journal des Signaux</h3>
-            <div id="logContainer" class="log-content"></div>
-        </div>
+    // Fonction pour afficher un signal sur l'interface (déjà présente)
+    window.updateUI = function(symbol, signal) {
+        let card = document.getElementById(`signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`);
+        
+        if (!card) {
+            card = document.createElement('div');
+            card.className = `signal-card ${signal.signal.toLowerCase()}`;
+            card.id = `signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`;
+            signalsContainer.appendChild(card);
+        }
 
-        <footer>
-            <small>Connecté à OKX WebSocket • Mises à jour toutes les ~5 secondes</small>
-        </footer>
-    </div>
+        const strengthColor = signal.strength > 70 ? 'strong' : signal.strength > 50 ? 'medium' : 'weak';
 
-    <script type="module">
-        import { startBot } from './engine.js';
+        card.innerHTML = `
+            <div class="symbol">${symbol}</div>
+            <div class="signal ${signal.signal.toLowerCase()}">
+                ${signal.signal}
+            </div>
+            <div class="price">$${parseFloat(signal.price).toFixed(4)}</div>
+            <div class="strength ${strengthColor}">
+                Force : ${signal.strength}%
+            </div>
+            <div class="rsi">RSI: ${signal.rsi || 'N/A'}</div>
+            <div class="reason">${signal.reason}</div>
+            <div class="time">${new Date(signal.timestamp).toLocaleTimeString()}</div>
+        `;
 
-        let isRunning = false;
+        // Ajouter au journal
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        logEntry.innerHTML = `
+            <span class="time">[${new Date().toLocaleTimeString()}]</span>
+            <span class="symbol">${symbol}</span> → 
+            <span class="signal ${signal.signal.toLowerCase()}">${signal.signal}</span> 
+            (Force: ${signal.strength}%) - ${signal.reason}
+        `;
+        logContainer.appendChild(logEntry);
+        
+        // Garder seulement les 50 derniers logs
+        if (logContainer.children.length > 50) {
+            logContainer.removeChild(logContainer.children[0]);
+        }
 
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const statusText = document.getElementById('statusText');
-        const signalsContainer = document.getElementById('signalsContainer');
-        const logContainer = document.getElementById('logContainer');
+        // Scroll automatique vers le bas du journal
+        logContainer.scrollTop = logContainer.scrollHeight;
+    };
 
-        // Fonction pour afficher un signal sur l'interface
-        window.updateUI = function(symbol, signal) {
-            // Mettre à jour ou créer la carte du signal
-            let card = document.getElementById(`signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`);
+    // Démarrer le bot avec mise à jour du statut pour 1 minute
+    startBtn.addEventListener('click', () => {
+        if (!isRunning) {
+            startBot();
+            isRunning = true;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
             
-            if (!card) {
-                card = document.createElement('div');
-                card.className = `signal-card ${signal.signal.toLowerCase()}`;
-                card.id = `signal-${symbol.replace(/[^a-zA-Z0-9]/g, '')}`;
-                signalsContainer.appendChild(card);
-            }
+            // Mise à jour du statut pour mode 1 minute
+            statusText.textContent = 'Statut : Connexion aux marchés • Signaux 1 minute en cours...';
+            statusText.style.color = '#4ade80';
+        }
+    });
 
-            const strengthColor = signal.strength > 70 ? 'strong' : signal.strength > 50 ? 'medium' : 'weak';
-
-            card.innerHTML = `
-                <div class="symbol">${symbol}</div>
-                <div class="signal ${signal.signal.toLowerCase()}">
-                    ${signal.signal}
-                </div>
-                <div class="price">$${signal.price.toFixed(2)}</div>
-                <div class="strength ${strengthColor}">
-                    Force : ${signal.strength}%
-                </div>
-                <div class="rsi">RSI: ${signal.rsi || 'N/A'}</div>
-                <div class="reason">${signal.reason}</div>
-                <div class="time">${new Date(signal.timestamp).toLocaleTimeString()}</div>
-            `;
-
-            // Ajouter au journal
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.innerHTML = `
-                <span class="time">[${new Date().toLocaleTimeString()}]</span>
-                <span class="symbol">${symbol}</span> → 
-                <span class="signal ${signal.signal.toLowerCase()}">${signal.signal}</span> 
-                (Force: ${signal.strength}%) - ${signal.reason}
-            `;
-            logContainer.appendChild(logEntry);
-            
-            // Garder seulement les 50 derniers logs
-            if (logContainer.children.length > 50) {
-                logContainer.removeChild(logContainer.children[0]);
-            }
-        };
-
-        // Démarrer le bot
-        startBtn.addEventListener('click', () => {
-            if (!isRunning) {
-                startBot();
-                isRunning = true;
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'inline-block';
-                statusText.textContent = 'Statut : En cours de connexion à OKX...';
-                statusText.style.color = '#4ade80';
-            }
-        });
-
-        // Arrêter le bot (pour l'instant simple reload, tu peux améliorer plus tard)
-        stopBtn.addEventListener('click', () => {
-            if (confirm('Arrêter le bot ?')) {
-                location.reload();
-            }
-        });
-    </script>
-</body>
-</html>
+    // Arrêter le bot
+    stopBtn.addEventListener('click', () => {
+        if (confirm('Arrêter le bot et recharger la page ?')) {
+            location.reload();
+        }
+    });
+</script>
